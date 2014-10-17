@@ -1,0 +1,65 @@
+﻿<Window x:Class="FilesToDatabaseImporter.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:viewModels="clr-namespace:FilesToDatabaseImporter.ViewModels"
+        xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+        xmlns:views="clr-namespace:FilesToDatabaseImporter.Views"
+        Title="FilesToDatabaseImporter" Height="600" Width="525">
+
+    <Window.DataContext>
+        <viewModels:MainWindowViewModel></viewModels:MainWindowViewModel>
+    </Window.DataContext>
+
+    <Window.Resources>
+        <Style TargetType="TextBox">
+            <Setter Property="VerticalContentAlignment" Value="Center"></Setter>
+            <Style.Triggers>
+                <Trigger Property="Validation.HasError" Value="true">
+                    <Setter Property="ToolTip" Value="{Binding RelativeSource={RelativeSource Self},
+                            Path=(Validation.Errors).CurrentItem.ErrorContent}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="5">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"></RowDefinition>
+            <RowDefinition Height="*"></RowDefinition>
+        </Grid.RowDefinitions>
+
+        <WrapPanel Orientation="Vertical">
+            <xctk:BusyIndicator IsBusy="{Binding Loading}">
+                <StackPanel>
+                    <GroupBox Header="Source">
+                        <StackPanel>
+                            <views:DirectorySelectorView DataContext="{Binding DirectorySelectorViewModel}"></views:DirectorySelectorView>
+                            <WrapPanel>
+                                <Button Width="88" Height="34" Margin="76,0,0,0" Command="{Binding ListFilesCommand}">List files</Button>
+                                <Label VerticalContentAlignment="Center" Visibility="{Binding DirectorySelected, Converter={StaticResource InverseBooleanToVisibilityConverter}}">No files found</Label>
+                            </WrapPanel>
+                        </StackPanel>
+                    </GroupBox>
+                    
+                    <!-- SQL server information -->
+                    <GroupBox Header="Database" IsEnabled="{Binding DirectorySelected}">
+                        <views:SqlServerView DataContext="{Binding SqlServerViewModel}"></views:SqlServerView>
+                    </GroupBox>
+                </StackPanel>
+
+            </xctk:BusyIndicator>
+            <WrapPanel Margin="0,0,0,5">
+                <Button Width="88" Height="34" Margin="77,0,0,0" Command="{Binding ImportCommand}">Import</Button>
+                <Button Width="68" Height="34" Click="ButtonBase_OnClick">Exit</Button>
+            </WrapPanel>
+        </WrapPanel>
+
+        <DataGrid ItemsSource="{Binding Files}" AutoGenerateColumns="False" IsReadOnly="True" VerticalScrollBarVisibility="Visible" Grid.Row="1">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="File name" Width="*" Binding="{Binding Name}"></DataGridTextColumn>
+                <DataGridTextColumn Header="Created date" Width="150" Binding="{Binding CreatedDate}"></DataGridTextColumn>
+                <DataGridCheckBoxColumn Header="Done" Width="40" Binding="{Binding Done}"></DataGridCheckBoxColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+    </Grid>
+</Window>

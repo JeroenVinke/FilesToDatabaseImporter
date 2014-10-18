@@ -9,6 +9,18 @@ namespace FilesToDatabaseImporter.ViewModels
 {
     public class DirectorySelectorViewModel : INotifyPropertyChanged, IDataErrorInfo
     {
+        private bool _directorySelected;
+        public bool DirectorySelected
+        {
+            get { return _directorySelected; }
+            set
+            {
+                if (value.Equals(_directorySelected)) return;
+                _directorySelected = value;
+                OnPropertyChanged();
+            }
+        }
+
         private string _directory;
         public string Directory
         {

@@ -6,7 +6,7 @@ using File = FilesToDatabaseImporter.Models.File;
 
 namespace FilesToDatabaseImporter.Helpers
 {
-    public class FileSearch
+    public class FileSearch : IFileSearch
     {
         private readonly List<File> _files;
         private string[] _extensions;
@@ -18,7 +18,7 @@ namespace FilesToDatabaseImporter.Helpers
         {
             _files = new List<File>();
             _recursive = true;
-            _directoryHelper = directoryHelper;
+            _directoryHelper = directoryHelper ?? new DirectoryHelper();
             _extensions = new string[] {};
         }
 
@@ -36,14 +36,14 @@ namespace FilesToDatabaseImporter.Helpers
             return _files;
         }
 
-        public FileSearch SetExtension(string[] extensions)
+        public IFileSearch SetExtension(string[] extensions)
         {
             _extensions = extensions;
 
             return this;
         }
 
-        public FileSearch SetDirectory(string directory)
+        public IFileSearch SetDirectory(string directory)
         {
             _directory = directory;
 
@@ -97,7 +97,7 @@ namespace FilesToDatabaseImporter.Helpers
             return true;
         }
 
-        public FileSearch SetRecursive(bool recursive)
+        public IFileSearch SetRecursive(bool recursive)
         {
             _recursive = recursive;
 

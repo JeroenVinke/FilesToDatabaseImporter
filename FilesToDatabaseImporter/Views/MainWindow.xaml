@@ -36,13 +36,13 @@
                             <views:DirectorySelectorView DataContext="{Binding DirectorySelectorViewModel}"></views:DirectorySelectorView>
                             <WrapPanel>
                                 <Button Width="88" Height="34" Margin="76,0,0,0" Command="{Binding ListFilesCommand}">List files</Button>
-                                <Label VerticalContentAlignment="Center" Visibility="{Binding DirectorySelected, Converter={StaticResource InverseBooleanToVisibilityConverter}}">No files found</Label>
+                                <Label VerticalContentAlignment="Center" Visibility="{Binding DirectorySelectorViewModel.DirectorySelected, Converter={StaticResource InverseBooleanToVisibilityConverter}}">No files found</Label>
                             </WrapPanel>
                         </StackPanel>
                     </GroupBox>
                     
                     <!-- SQL server information -->
-                    <GroupBox Header="Database" IsEnabled="{Binding DirectorySelected}">
+                    <GroupBox Header="Database" IsEnabled="{Binding DirectorySelectorViewModel.DirectorySelected}">
                         <views:SqlServerView DataContext="{Binding SqlServerViewModel}"></views:SqlServerView>
                     </GroupBox>
                 </StackPanel>

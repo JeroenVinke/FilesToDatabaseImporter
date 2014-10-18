@@ -9,11 +9,37 @@ using System.Windows;
 using System.Windows.Input;
 using FilesToDatabaseImporter.Annotations;
 using FilesToDatabaseImporter.Helpers;
+using FilesToDatabaseImporter.Interfaces;
 
 namespace FilesToDatabaseImporter.ViewModels
 {
     public class MainWindowViewModel : INotifyPropertyChanged
     {
+
+        private IFileSearch _fileSearch;
+        public IFileSearch FileSearch
+        {
+            get { return _fileSearch; }
+            set { _fileSearch = value; }
+        }
+
+        private IDispatcher _dispatcher;
+        public IDispatcher Dispatcher
+        {
+            get
+            {
+                if (_dispatcher == null)
+                {
+                    _dispatcher = new DispatcherWrapper();
+                }
+
+                return _dispatcher;
+            }
+        }
+
+        private IDatabaseHelper _databaseHelper;
+        private IMessageBoxHelper _messageBoxHelper;
+
         private bool _loading;
         public bool Loading
         {
@@ -26,19 +52,7 @@ namespace FilesToDatabaseImporter.ViewModels
             }
         }
 
-        private bool _directorySelected;
-        public bool DirectorySelected
-        {
-            get { return _directorySelected; }
-            set
-            {
-                if (value.Equals(_directorySelected)) return;
-                _directorySelected = value;
-                OnPropertyChanged();
-            }
-        }
-
-
+        
         // ViewModels
         public SqlServerViewModel SqlServerViewModel { get;set; }
         public DirectorySelectorViewModel DirectorySelectorViewModel { get; set; }
@@ -52,22 +66,29 @@ namespace FilesToDatabaseImporter.ViewModels
 
 
 
-        public MainWindowViewModel()
+        public MainWindowViewModel(IFileSearch fileSearch = null, IDispatcher dispatcher = null, IDatabaseHelper databaseHelper = null, IMessageBoxHelper messageBoxHelper = null)
         {
             Files = new ObservableCollection<FileToDoViewModel>();
             SqlServerViewModel = new SqlServerViewModel();
             DirectorySelectorViewModel = new DirectorySelectorViewModel();
-
+            FileSearch = fileSearch ?? new FileSearch();
+            _dispatcher = dispatcher;
+            _databaseHelper = databaseHelper ?? new DatabaseHelper();
+            _messageBoxHelper = messageBoxHelper ?? new MessageBoxHelper();
 
             ImportCommand = new RelayCommand(StartImportAsync, () => SqlServerViewModel.CanSave && !Loading);
             ListFilesCommand = new RelayCommand(ListFilesAsync, () => !Loading);
+        }
+
+        public MainWindowViewModel() : this(null)
+        {   
         }
 
         private void ListFilesAsync()
         {
             if (!DirectorySelectorViewModel.CanSave)
             {
-                MessageBox.Show(DirectorySelectorViewModel.Errors["Directory"]);
+                _messageBoxHelper.Show(DirectorySelectorViewModel.Errors["Directory"]);
                 return;
             }
 
@@ -77,7 +98,7 @@ namespace FilesToDatabaseImporter.ViewModels
             Task.Run(() => ListFiles()).ContinueWith(i =>
             {
                 Loading = false;
-                DirectorySelected = Files.Any();
+                DirectorySelectorViewModel.DirectorySelected = Files.Any();
             });
         }
 
@@ -92,7 +113,7 @@ namespace FilesToDatabaseImporter.ViewModels
 
         public void ListFiles()
         {
-            var files = new FileSearch()
+            var files = FileSearch
                 .SetDirectory(DirectorySelectorViewModel.Directory)
                 .SetExtension(new[] { "htm", "html" })
                 .SetRecursive(DirectorySelectorViewModel.Recursive)
@@ -102,45 +123,44 @@ namespace FilesToDatabaseImporter.ViewModels
             {
                 var viewModel = new FileToDoViewModel(file);
 
-                Application.Current.Dispatcher.Invoke(() => Files.Add(viewModel));
+                Dispatcher.Invoke(() => Files.Add(viewModel));
             }
         }
 
-
         public void Import()
         {
-            var sqlConnection = GetSqlConnection();
+            var databaseHelper = GetDatabaseHelper();
 
             // error caught in GetSqlConnection
-            if (sqlConnection == null) return;
+            if (databaseHelper == null) return;
 
             foreach (var file in Files)
             {
                 try
                 {
-                    InsertRecord(file, sqlConnection);
+                    InsertRecord(file, databaseHelper);
                 }
                 catch (Exception e)
                 {
-                    MessageBox.Show("Exception occurred during INSERT: " + e);
-                    sqlConnection.Close();
+                    _messageBoxHelper.Show("Exception occurred during INSERT: " + e);
+                    databaseHelper.Close();
                     return;
                 }
 
 
                 var file1 = file;
-                Application.Current.Dispatcher.Invoke(() => file1.Done = true);
+                Dispatcher.Invoke(() => file1.Done = true);
             }
 
 
-            Application.Current.Dispatcher.Invoke(() => MessageBox.Show("Done"));
+            Dispatcher.Invoke(() => _messageBoxHelper.Show("Done"));
 
-            sqlConnection.Close();
+            databaseHelper.Close();
         }
 
-        private void InsertRecord(FileToDoViewModel file, SqlConnection sqlConnection)
+        private void InsertRecord(FileToDoViewModel file, IDatabaseHelper databaseHelper)
         {
-            using (var sqlCommand = new SqlCommand("INSERT INTO " + SqlServerViewModel.Table + " (FileName, Body, CreatedDateTime) VALUES (@FileName, @Body, @CreatedDateTime)", sqlConnection))
+            using (var sqlCommand = new SqlCommand("INSERT INTO " + SqlServerViewModel.Table + " (FileName, Body, CreatedDateTime) VALUES (@FileName, @Body, @CreatedDateTime)", databaseHelper.SqlConnection))
             {
                 sqlCommand.Parameters.AddWithValue("@FileName", file.Name);
                 sqlCommand.Parameters.AddWithValue("@Body", file.Content);
@@ -150,7 +170,7 @@ namespace FilesToDatabaseImporter.ViewModels
             }
         }
 
-        private SqlConnection GetSqlConnection()
+        private IDatabaseHelper GetDatabaseHelper()
         {
             // connectionstringbuilder
             var connectionStringBuilder = new SqlConnectionStringBuilder
@@ -169,41 +189,41 @@ namespace FilesToDatabaseImporter.ViewModels
 
 
             // sqlconnection
-            var databaseConnection = new SqlConnection(connectionStringBuilder.ToString());
+            _databaseHelper.SetConnectionString(connectionStringBuilder.ToString());
 
             try
             {
                 // open the connection, catch any exceptions it might throw
-                databaseConnection.Open();
+                _databaseHelper.Open();
             }
             catch (InvalidOperationException)
             {
-                Application.Current.Dispatcher.Invoke(
-                    () => MessageBox.Show("Cannot open a connection without specifying a data source or server."));
+                Dispatcher.Invoke(
+                    () => _messageBoxHelper.Show("Cannot open a connection without specifying a data source or server."));
 
                 return null;
             }
             catch (SqlException)
             {
-                Application.Current.Dispatcher.Invoke(
+                Dispatcher.Invoke(
                     () =>
-                        MessageBox.Show(
+                        _messageBoxHelper.Show(
                             "A connection-level error occurred while opening the connection. If the Number property contains the value 18487 or 18488, this indicates that the specified password has expired or must be reset. See the ChangePassword method for more information."));
 
                 return null;
             }
             catch (Exception error)
             {
-                Application.Current.Dispatcher.Invoke(
+                Dispatcher.Invoke(
                     () =>
-                        MessageBox.Show(
+                        _messageBoxHelper.Show(
                         "Unexpected error occurred. " + error));
 
                 return null;
             }
 
 
-            return databaseConnection;
+            return _databaseHelper;
         }
 
 

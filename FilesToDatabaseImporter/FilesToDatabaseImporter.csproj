@@ -87,8 +87,15 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Helpers\DatabaseHelper.cs" />
     <Compile Include="Helpers\DirectoryHelper.cs" />
-    <Compile Include="Helpers\IDirectoryHelper.cs" />
+    <Compile Include="Helpers\DispatcherWrapper.cs" />
+    <Compile Include="Interfaces\IMessageBoxHelper.cs" />
+    <Compile Include="Helpers\MessageBoxHelper.cs" />
+    <Compile Include="Interfaces\IDatabaseHelper.cs" />
+    <Compile Include="Interfaces\IDirectoryHelper.cs" />
+    <Compile Include="Interfaces\IDispatcher.cs" />
+    <Compile Include="Interfaces\IFileSearch.cs" />
     <Compile Include="ViewModels\DirectorySelectorViewModel.cs" />
     <Compile Include="ViewModels\SqlServerViewModel.cs" />
     <Compile Include="Views\DirectorySelectorView.xaml.cs">

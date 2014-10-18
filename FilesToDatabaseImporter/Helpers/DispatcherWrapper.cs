@@ -11,6 +11,8 @@ namespace FilesToDatabaseImporter.Helpers
 
         public DispatcherWrapper()
         {
+            if (Application.Current == null) return;
+
             _dispatcher = Application.Current.Dispatcher;
         }
         public void Invoke(Action action)

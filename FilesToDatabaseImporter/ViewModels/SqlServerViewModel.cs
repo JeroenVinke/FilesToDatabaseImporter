@@ -4,6 +4,8 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using FilesToDatabaseImporter.Annotations;
+using FilesToDatabaseImporter.Helpers;
+using FilesToDatabaseImporter.Interfaces;
 
 namespace FilesToDatabaseImporter.ViewModels
 {
@@ -17,6 +19,9 @@ namespace FilesToDatabaseImporter.ViewModels
             {
                 if (value == _datasource) return;
                 _datasource = value;
+
+                DatabaseHelper.SqlConnectionStringBuilder.DataSource = _datasource;
+
                 OnPropertyChanged();
             }
         }
@@ -29,6 +34,16 @@ namespace FilesToDatabaseImporter.ViewModels
             {
                 if (value == _username) return;
                 _username = value;
+
+                if (!IntegratedSecurity)
+                {
+                    DatabaseHelper.SqlConnectionStringBuilder.UserID = _username;
+                }
+                else
+                {
+                    DatabaseHelper.SqlConnectionStringBuilder.UserID = null;
+                }
+
                 OnPropertyChanged();
             }
         }
@@ -41,6 +56,16 @@ namespace FilesToDatabaseImporter.ViewModels
             {
                 if (value == _password) return;
                 _password = value;
+
+                if (!IntegratedSecurity)
+                {
+                    DatabaseHelper.SqlConnectionStringBuilder.Password = _password;
+                }
+                else
+                {
+                    DatabaseHelper.SqlConnectionStringBuilder.Password = null;
+                }
+
                 OnPropertyChanged();
             }
         }
@@ -53,6 +78,9 @@ namespace FilesToDatabaseImporter.ViewModels
             {
                 if (value == _database) return;
                 _database = value;
+
+                DatabaseHelper.SqlConnectionStringBuilder.InitialCatalog = _database;
+
                 OnPropertyChanged();
             }
         }
@@ -65,6 +93,9 @@ namespace FilesToDatabaseImporter.ViewModels
             {
                 if (value == _table) return;
                 _table = value;
+
+                DatabaseHelper.SetTable(_table);
+
                 OnPropertyChanged();
             }
         }
@@ -78,6 +109,8 @@ namespace FilesToDatabaseImporter.ViewModels
                 if (value.Equals(_integratedSecurity)) return;
                 _integratedSecurity = value;
 
+                DatabaseHelper.SqlConnectionStringBuilder.IntegratedSecurity = _integratedSecurity;
+
                 if (PropertyChanged != null)
                 {
                     PropertyChanged(this, new PropertyChangedEventArgs("Username"));
@@ -88,11 +121,24 @@ namespace FilesToDatabaseImporter.ViewModels
             }
         }
 
-        public SqlServerViewModel()
+        private IDatabaseHelper _databaseHelper;
+        public IDatabaseHelper DatabaseHelper
         {
+            get { return _databaseHelper; }
+            set { _databaseHelper = value; }
+        }
+
+        public SqlServerViewModel(IDatabaseHelper databaseHelper = null)
+        {
+            _databaseHelper = databaseHelper;
+
             IntegratedSecurity = true;
             Database = "FilesToDatabaseImporter";
             Table = "Imports";
+        }
+
+        public SqlServerViewModel() : this(new DatabaseHelper())
+        {
         }
 
         #region IDataErrorInfo
@@ -109,6 +155,7 @@ namespace FilesToDatabaseImporter.ViewModels
         }
 
         private readonly Dictionary<string, string> _errors = new Dictionary<string, string>();
+        
 
         string IDataErrorInfo.this[string propertyName]
         {

@@ -12,7 +12,7 @@ namespace FilesToDatabaseImporter.Tests
     public class FileSearchTests
     {
         [TestMethod]
-        public void FileSearch_Constructor()
+        public void Constructor()
         {
             var FileSearch = new FileSearch();
 
@@ -23,7 +23,7 @@ namespace FilesToDatabaseImporter.Tests
         
         // HasExtension
         [TestMethod]
-        public void FileSearch_HasExtension_Correct_ReturnsTrue()
+        public void HasExtension_Correct_ReturnsTrue()
         {
             // Arrange
             var FileSearch = new FileSearch();
@@ -41,7 +41,7 @@ namespace FilesToDatabaseImporter.Tests
         }
 
         [TestMethod]
-        public void FileSearch_HasExtension_NotMatchingFilter_ReturnsFalse()
+        public void HasExtension_NotMatchingFilter_ReturnsFalse()
         {
             // Arrange
             var FileSearch = new FileSearch();
@@ -59,7 +59,7 @@ namespace FilesToDatabaseImporter.Tests
         }
 
         [TestMethod]
-        public void FileSearch_HasExtension_WithoutExtension_ReturnsFalse()
+        public void HasExtension_WithoutExtension_ReturnsFalse()
         {
             // Arrange
             var FileSearch = new FileSearch();
@@ -82,7 +82,7 @@ namespace FilesToDatabaseImporter.Tests
         
         // SetExtension
         [TestMethod]
-        public void FileSearch_SetExtension()
+        public void SetExtension()
         {
             // Arrange
             var FileSearch = new FileSearch();
@@ -109,7 +109,7 @@ namespace FilesToDatabaseImporter.Tests
 
         // SetDirectory
         [TestMethod]
-        public void FileSearch_SetDirectory()
+        public void SetDirectory()
         {
             // Arrange
             var FileSearch = new FileSearch();
@@ -137,7 +137,7 @@ namespace FilesToDatabaseImporter.Tests
 
         // Iterate
         [TestMethod]
-        public void FileSearch_Iterate()
+        public void Iterate()
         {
             var files = new List<string>() {"test.txt"}.ToArray();
 
@@ -164,7 +164,7 @@ namespace FilesToDatabaseImporter.Tests
         }
 
         [TestMethod]
-        public void FileSearch_Iterate_ExtensionFilter()
+        public void Iterate_ExtensionFilter()
         {
             var files = new List<string>() { "test.txt" }.ToArray();
 
@@ -191,7 +191,7 @@ namespace FilesToDatabaseImporter.Tests
         }
 
         [TestMethod]
-        public void FileSearch_Iterate_NotRecursive()
+        public void Iterate_NotRecursive()
         {
             var files = new List<string>() { "test.txt" }.ToArray();
 
@@ -219,9 +219,14 @@ namespace FilesToDatabaseImporter.Tests
         }
 
 
+
+
+
+
+
         // Search
         [TestMethod]
-        public void FileSearch_Search()
+        public void Search()
         {
             var files = new List<string>() { "test.txt" }.ToArray();
 
@@ -246,7 +251,7 @@ namespace FilesToDatabaseImporter.Tests
 
         [TestMethod]
         [ExpectedException(typeof(NullReferenceException))]
-        public void FileSearch_Search_NoDirectory_ThrowsException()
+        public void Search_NoDirectory_ThrowsException()
         {
             // Arrange
 
@@ -266,7 +271,7 @@ namespace FilesToDatabaseImporter.Tests
 
         // SetRecursive
         [TestMethod]
-        public void FileSearch_SetRecursive()
+        public void SetRecursive()
         {
             // Arrange
             var FileSearch = new FileSearch();

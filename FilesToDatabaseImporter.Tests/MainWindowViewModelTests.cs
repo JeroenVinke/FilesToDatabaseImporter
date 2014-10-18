@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Data.SqlClient;
+using System.Linq;
 using FilesToDatabaseImporter.Helpers;
 using FilesToDatabaseImporter.Interfaces;
 using FilesToDatabaseImporter.Models;
@@ -24,6 +26,8 @@ namespace FilesToDatabaseImporter.Tests
         }
 
 
+
+
         // Constructor
         [TestMethod]
         public void Constructor()
@@ -40,6 +44,56 @@ namespace FilesToDatabaseImporter.Tests
             Assert.IsNotNull(privateObject.GetField("_dispatcher"));
             Assert.IsNotNull(privateObject.GetField("_fileSearch"));
         }
+
+        [TestMethod]
+        public void Constructor_DefaultContstructor()
+        {
+            // Act
+            var viewModel = new MainWindowViewModel();
+
+            // Assert
+            Assert.IsNotNull(viewModel.Files);
+        }
+
+
+
+
+
+
+        // Dispatcher
+        [TestMethod]
+        public void Dispatcher_null()
+        {
+            // Act
+            var viewModel = new MainWindowViewModel(null);
+
+            var privateObject = new PrivateObject(viewModel);
+
+            var dispatcher = privateObject.GetProperty("Dispatcher");
+
+            // Assert
+            Assert.IsNotNull(dispatcher);
+        }
+
+        [TestMethod]
+        public void Dispatcher_NotNull()
+        {
+            // Act
+            var viewModel = new MainWindowViewModel(null, dispatcherMock.Object);
+
+            var privateObject = new PrivateObject(viewModel);
+
+            var dispatcher = privateObject.GetProperty("Dispatcher");
+
+            // Assert
+            Assert.AreEqual(dispatcherMock.Object, dispatcher);
+        }
+
+
+
+
+
+
 
         // ListFiles
         [TestMethod]
@@ -78,13 +132,116 @@ namespace FilesToDatabaseImporter.Tests
 
 
 
-        // GetDatabaseHelper
+
+
+
+        // Import
         [TestMethod]
-        public void GetDatabaseHelper_OK()
+        public void Import_OK()
+        {
+            // Arrange
+            DispatcherSetup();
+
+            var databaseHelperMock = new Mock<IDatabaseHelper>();
+            databaseHelperMock.Setup(i => i.InsertRecord(It.IsAny<FileToDoViewModel>())).Verifiable();
+
+            SetupDatabaseHelper(databaseHelperMock);
+
+
+            
+            var messageBoxHelperMock = new Mock<IMessageBoxHelper>();
+            messageBoxHelperMock.Setup(i => i.Show("Done")).Verifiable();
+
+
+
+            var viewModel = new MainWindowViewModel(null, dispatcherMock.Object, databaseHelperMock.Object, messageBoxHelperMock.Object);
+            viewModel.Files = new ObservableCollection<FileToDoViewModel>()
+            {
+                new FileToDoViewModel(new File
+                {
+                    Name = "test",
+                    Content = "Test",
+                    CreatedDate = DateTime.Now
+                }),
+                new FileToDoViewModel(new File
+                {
+                    Name = "test",
+                    Content = "Test",
+                    CreatedDate = DateTime.Now
+                })
+            };
+
+
+            // Act
+            viewModel.Import();
+
+
+
+            // Assert
+            messageBoxHelperMock.Verify(i => i.Show("Done"));
+            databaseHelperMock.Verify(i => i.InsertRecord(It.IsAny<FileToDoViewModel>()), () => Times.Exactly(viewModel.Files.Count));
+        }
+
+        [TestMethod]
+        public void Import_InsertRecordThrowsError()
+        {
+            // Arrange
+            DispatcherSetup();
+
+            var databaseHelperMock = new Mock<IDatabaseHelper>();
+            databaseHelperMock.Setup(i => i.InsertRecord(It.IsAny<FileToDoViewModel>())).Throws(new Exception());
+            databaseHelperMock.Setup(i => i.Close()).Verifiable();
+
+            SetupDatabaseHelper(databaseHelperMock);
+
+
+
+            var messageBoxHelperMock = new Mock<IMessageBoxHelper>();
+            messageBoxHelperMock.Setup(i => i.Show(It.IsAny<string>())).Verifiable();
+
+
+
+            var viewModel = new MainWindowViewModel(null, dispatcherMock.Object, databaseHelperMock.Object, messageBoxHelperMock.Object);
+            viewModel.Files = new ObservableCollection<FileToDoViewModel>()
+            {
+                new FileToDoViewModel(new File
+                {
+                    Name = "test",
+                    Content = "Test",
+                    CreatedDate = DateTime.Now
+                }),
+                new FileToDoViewModel(new File
+                {
+                    Name = "test",
+                    Content = "Test",
+                    CreatedDate = DateTime.Now
+                })
+            };
+
+
+            // Act
+            viewModel.Import();
+
+
+
+            // Assert
+            messageBoxHelperMock.Verify(i => i.Show(It.IsAny<string>()));
+            databaseHelperMock.Verify(i => i.Close());
+            Assert.IsFalse(viewModel.Files.Any(i => i.Done));
+        }
+
+
+
+
+
+        // OpenConnection
+        [TestMethod]
+        public void OpenConnection_OK()
         {
             // Arrange
             var databaseHelperMock = new Mock<IDatabaseHelper>();
             databaseHelperMock.Setup(i => i.Open()).Verifiable();
+            SetupDatabaseHelper(databaseHelperMock);
 
             var viewModel = new MainWindowViewModel(null, null, databaseHelperMock.Object);
             viewModel.SqlServerViewModel.Database = "";
@@ -92,16 +249,14 @@ namespace FilesToDatabaseImporter.Tests
             viewModel.SqlServerViewModel.IntegratedSecurity = true;
 
             // Act
-            var privateObject = new PrivateObject(viewModel);
-
-            var result = privateObject.Invoke("GetDatabaseHelper");
+            viewModel.OpenConnection();
 
             // Assert
-            Assert.IsNotNull(result);
+            databaseHelperMock.Verify(i => i.Open());
         }
 
         [TestMethod]
-        public void GetDatabaseHelper_WithSqlAuthentication()
+        public void OpenConnection_WithSqlAuthentication()
         {
             // Arrange
             var fakeDatabaseHelper = new FakeDatabaseHelper();
@@ -114,25 +269,22 @@ namespace FilesToDatabaseImporter.Tests
             viewModel.SqlServerViewModel.Password = "test";
 
             // Act
-            var privateObject = new PrivateObject(viewModel);
-
-            var result = (IDatabaseHelper)privateObject.Invoke("GetDatabaseHelper");
+            viewModel.OpenConnection();
 
             // Assert
             var connectionString = fakeDatabaseHelper.GetConnectionString();
             var connectionStringBuilder = new SqlConnectionStringBuilder(connectionString);
 
             Assert.IsTrue(connectionStringBuilder.UserID == viewModel.SqlServerViewModel.Username && connectionStringBuilder.Password == viewModel.SqlServerViewModel.Password);
-            Assert.IsNotNull(result);
         }
 
-
         [TestMethod]
-        public void GetDatabaseHelper_InvalidOperationExceptionDuringOpen()
+        public void OpenConnection_InvalidOperationExceptionDuringOpen()
         {
             // Arrange
             var databaseHelperMock = new Mock<IDatabaseHelper>();
             databaseHelperMock.Setup(i => i.Open()).Throws(new InvalidOperationException());
+            SetupDatabaseHelper(databaseHelperMock);
 
             DispatcherSetup();
 
@@ -145,21 +297,19 @@ namespace FilesToDatabaseImporter.Tests
             viewModel.SqlServerViewModel.IntegratedSecurity = true;
 
             // Act
-            var privateObject = new PrivateObject(viewModel);
-
-            var result = privateObject.Invoke("GetDatabaseHelper");
+            viewModel.OpenConnection();
 
             // Assert
-            Assert.IsNull(result);
             messageBoxHelperMock.Verify(i => i.Show(It.IsAny<string>()));
         }
 
         [TestMethod]
-        public void GetDatabaseHelper_SqlExceptionDuringOpen()
+        public void OpenConnection_SqlExceptionDuringOpen()
         {
             // Arrange
             var databaseHelperMock = new Mock<IDatabaseHelper>();
             databaseHelperMock.Setup(i => i.Open()).Throws(MakeSqlException());
+            SetupDatabaseHelper(databaseHelperMock);
 
             DispatcherSetup();
 
@@ -172,20 +322,19 @@ namespace FilesToDatabaseImporter.Tests
             viewModel.SqlServerViewModel.IntegratedSecurity = true;
 
             // Act
-            var privateObject = new PrivateObject(viewModel);
-
-            var result = privateObject.Invoke("GetDatabaseHelper");
+            viewModel.OpenConnection();
 
             // Assert
-            Assert.IsNull(result);
             messageBoxHelperMock.Verify(i => i.Show(It.IsAny<string>()));
         }
 
         [TestMethod]
-        public void GetDatabaseHelper_ExceptionDuringOpen()
+        public void OpenConnection_ExceptionDuringOpen()
         {
             // Arrange
             var databaseHelperMock = new Mock<IDatabaseHelper>();
+            SetupDatabaseHelper(databaseHelperMock);
+
             // NullReferenceException because any exception other than InvalidOperation and SqlException should be caught...
             databaseHelperMock.Setup(i => i.Open()).Throws(new NullReferenceException());
 
@@ -200,16 +349,21 @@ namespace FilesToDatabaseImporter.Tests
             viewModel.SqlServerViewModel.IntegratedSecurity = true;
 
             // Act
-            var privateObject = new PrivateObject(viewModel);
-
-            var result = privateObject.Invoke("GetDatabaseHelper");
+            viewModel.OpenConnection();
 
             // Assert
-            Assert.IsNull(result);
             messageBoxHelperMock.Verify(i => i.Show(It.IsAny<string>()));
         }
 
 
+
+
+
+
+        private void SetupDatabaseHelper(Mock<IDatabaseHelper> databaseHelperMock)
+        {
+            databaseHelperMock.SetupGet(i => i.SqlConnectionStringBuilder).Returns(new SqlConnectionStringBuilder());
+        }
 
 
         // http://stackoverflow.com/questions/1386962/how-to-throw-a-sqlexceptionneed-for-mocking

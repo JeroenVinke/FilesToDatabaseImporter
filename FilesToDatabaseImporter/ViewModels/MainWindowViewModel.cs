@@ -68,13 +68,16 @@ namespace FilesToDatabaseImporter.ViewModels
 
         public MainWindowViewModel(IFileSearch fileSearch = null, IDispatcher dispatcher = null, IDatabaseHelper databaseHelper = null, IMessageBoxHelper messageBoxHelper = null)
         {
-            Files = new ObservableCollection<FileToDoViewModel>();
-            SqlServerViewModel = new SqlServerViewModel();
-            DirectorySelectorViewModel = new DirectorySelectorViewModel();
-            FileSearch = fileSearch ?? new FileSearch();
             _dispatcher = dispatcher;
             _databaseHelper = databaseHelper ?? new DatabaseHelper();
             _messageBoxHelper = messageBoxHelper ?? new MessageBoxHelper();
+
+
+            Files = new ObservableCollection<FileToDoViewModel>();
+            SqlServerViewModel = new SqlServerViewModel(_databaseHelper);
+            DirectorySelectorViewModel = new DirectorySelectorViewModel();
+            FileSearch = fileSearch ?? new FileSearch();
+
 
             ImportCommand = new RelayCommand(StartImportAsync, () => SqlServerViewModel.CanSave && !Loading);
             ListFilesCommand = new RelayCommand(ListFilesAsync, () => !Loading);
@@ -129,21 +132,18 @@ namespace FilesToDatabaseImporter.ViewModels
 
         public void Import()
         {
-            var databaseHelper = GetDatabaseHelper();
-
-            // error caught in GetSqlConnection
-            if (databaseHelper == null) return;
+            OpenConnection();
 
             foreach (var file in Files)
             {
                 try
                 {
-                    InsertRecord(file, databaseHelper);
+                    _databaseHelper.InsertRecord(file);
                 }
                 catch (Exception e)
                 {
-                    _messageBoxHelper.Show("Exception occurred during INSERT: " + e);
-                    databaseHelper.Close();
+                    Dispatcher.Invoke(() => _messageBoxHelper.Show("Exception occurred during INSERT: " + e));
+                    _databaseHelper.Close();
                     return;
                 }
 
@@ -155,42 +155,11 @@ namespace FilesToDatabaseImporter.ViewModels
 
             Dispatcher.Invoke(() => _messageBoxHelper.Show("Done"));
 
-            databaseHelper.Close();
+            _databaseHelper.Close();
         }
 
-        private void InsertRecord(FileToDoViewModel file, IDatabaseHelper databaseHelper)
+        public void OpenConnection()
         {
-            using (var sqlCommand = new SqlCommand("INSERT INTO " + SqlServerViewModel.Table + " (FileName, Body, CreatedDateTime) VALUES (@FileName, @Body, @CreatedDateTime)", databaseHelper.SqlConnection))
-            {
-                sqlCommand.Parameters.AddWithValue("@FileName", file.Name);
-                sqlCommand.Parameters.AddWithValue("@Body", file.Content);
-                sqlCommand.Parameters.AddWithValue("@CreatedDateTime", file.CreatedDate);
-
-                sqlCommand.ExecuteNonQuery();
-            }
-        }
-
-        private IDatabaseHelper GetDatabaseHelper()
-        {
-            // connectionstringbuilder
-            var connectionStringBuilder = new SqlConnectionStringBuilder
-            {
-                DataSource = SqlServerViewModel.Datasource,
-                IntegratedSecurity = SqlServerViewModel.IntegratedSecurity,
-                InitialCatalog = SqlServerViewModel.Database
-            };
-
-            if (!SqlServerViewModel.IntegratedSecurity)
-            {
-                connectionStringBuilder.UserID = SqlServerViewModel.Username;
-                connectionStringBuilder.Password = SqlServerViewModel.Password;
-            }
-
-
-
-            // sqlconnection
-            _databaseHelper.SetConnectionString(connectionStringBuilder.ToString());
-
             try
             {
                 // open the connection, catch any exceptions it might throw
@@ -200,8 +169,6 @@ namespace FilesToDatabaseImporter.ViewModels
             {
                 Dispatcher.Invoke(
                     () => _messageBoxHelper.Show("Cannot open a connection without specifying a data source or server."));
-
-                return null;
             }
             catch (SqlException)
             {
@@ -209,8 +176,6 @@ namespace FilesToDatabaseImporter.ViewModels
                     () =>
                         _messageBoxHelper.Show(
                             "A connection-level error occurred while opening the connection. If the Number property contains the value 18487 or 18488, this indicates that the specified password has expired or must be reset. See the ChangePassword method for more information."));
-
-                return null;
             }
             catch (Exception error)
             {
@@ -218,14 +183,8 @@ namespace FilesToDatabaseImporter.ViewModels
                     () =>
                         _messageBoxHelper.Show(
                         "Unexpected error occurred. " + error));
-
-                return null;
             }
-
-
-            return _databaseHelper;
         }
-
 
         #region INPC
         public event PropertyChangedEventHandler PropertyChanged;

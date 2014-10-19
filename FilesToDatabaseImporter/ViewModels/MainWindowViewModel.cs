@@ -15,30 +15,11 @@ namespace FilesToDatabaseImporter.ViewModels
 {
     public class MainWindowViewModel : INotifyPropertyChanged
     {
-
-        private IFileSearch _fileSearch;
-        public IFileSearch FileSearch
-        {
-            get { return _fileSearch; }
-            set { _fileSearch = value; }
-        }
-
-        private IDispatcher _dispatcher;
-        public IDispatcher Dispatcher
-        {
-            get
-            {
-                if (_dispatcher == null)
-                {
-                    _dispatcher = new DispatcherWrapper();
-                }
-
-                return _dispatcher;
-            }
-        }
-
-        private IDatabaseHelper _databaseHelper;
-        private IMessageBoxHelper _messageBoxHelper;
+        // helpers
+        private readonly IFileSearch _fileSearch;
+        private readonly IDispatcher _dispatcher;
+        private readonly IDatabaseHelper _databaseHelper;
+        private readonly IMessageBoxHelper _messageBoxHelper;
 
         private bool _loading;
         public bool Loading
@@ -52,12 +33,18 @@ namespace FilesToDatabaseImporter.ViewModels
             }
         }
 
-        
+
+        // Collections
+        public ObservableCollection<FileToDoViewModel> Files { get; set; }
+
+
+
         // ViewModels
         public SqlServerViewModel SqlServerViewModel { get;set; }
         public DirectorySelectorViewModel DirectorySelectorViewModel { get; set; }
 
-        public ObservableCollection<FileToDoViewModel> Files { get; set; }
+
+
 
 
         // Commands
@@ -68,17 +55,20 @@ namespace FilesToDatabaseImporter.ViewModels
 
         public MainWindowViewModel(IFileSearch fileSearch = null, IDispatcher dispatcher = null, IDatabaseHelper databaseHelper = null, IMessageBoxHelper messageBoxHelper = null)
         {
+            // initialize helpers
             _dispatcher = dispatcher;
             _databaseHelper = databaseHelper ?? new DatabaseHelper();
             _messageBoxHelper = messageBoxHelper ?? new MessageBoxHelper();
-
+            _fileSearch = fileSearch ?? new FileSearch();
 
             Files = new ObservableCollection<FileToDoViewModel>();
+
+            // initialize viewmodels
             SqlServerViewModel = new SqlServerViewModel(_databaseHelper);
             DirectorySelectorViewModel = new DirectorySelectorViewModel();
-            FileSearch = fileSearch ?? new FileSearch();
+            
 
-
+            // initialize command
             ImportCommand = new RelayCommand(StartImportAsync, () => SqlServerViewModel.CanSave && !Loading);
             ListFilesCommand = new RelayCommand(ListFilesAsync, () => !Loading);
         }
@@ -87,6 +77,11 @@ namespace FilesToDatabaseImporter.ViewModels
         {   
         }
 
+
+
+        /// <summary>
+        /// Calls ListFiles() async and shows loading status until it finishes
+        /// </summary>
         private void ListFilesAsync()
         {
             if (!DirectorySelectorViewModel.CanSave)
@@ -105,6 +100,10 @@ namespace FilesToDatabaseImporter.ViewModels
             });
         }
 
+
+        /// <summary>
+        /// Calls Import() async and shows loading status until it finishes
+        /// </summary>
         public void StartImportAsync()
         {
             Loading = true;
@@ -114,9 +113,12 @@ namespace FilesToDatabaseImporter.ViewModels
             });
         }
 
+        /// <summary>
+        /// Uses the FileSearch helper to fill the Files collection with FileToDoViewModels
+        /// </summary>
         public void ListFiles()
         {
-            var files = FileSearch
+            var files = _fileSearch
                 .SetDirectory(DirectorySelectorViewModel.Directory)
                 .SetExtension(new[] { "htm", "html" })
                 .SetRecursive(DirectorySelectorViewModel.Recursive)
@@ -126,10 +128,16 @@ namespace FilesToDatabaseImporter.ViewModels
             {
                 var viewModel = new FileToDoViewModel(file);
 
-                Dispatcher.Invoke(() => Files.Add(viewModel));
+                _dispatcher.Invoke(() => Files.Add(viewModel));
             }
         }
 
+
+        /// <summary>
+        /// Opens the database connection
+        /// Inserts all files in the Files collection into the database
+        /// Closes the database connection
+        /// </summary>
         public void Import()
         {
             OpenConnection();
@@ -142,22 +150,26 @@ namespace FilesToDatabaseImporter.ViewModels
                 }
                 catch (Exception e)
                 {
-                    Dispatcher.Invoke(() => _messageBoxHelper.Show("Exception occurred during INSERT: " + e));
+                    _dispatcher.Invoke(() => _messageBoxHelper.Show("Exception occurred during INSERT: " + e));
                     _databaseHelper.Close();
                     return;
                 }
 
 
                 var file1 = file;
-                Dispatcher.Invoke(() => file1.Done = true);
+                _dispatcher.Invoke(() => file1.Done = true);
             }
 
 
-            Dispatcher.Invoke(() => _messageBoxHelper.Show("Done"));
+            _dispatcher.Invoke(() => _messageBoxHelper.Show("Done"));
 
             _databaseHelper.Close();
         }
 
+
+        /// <summary>
+        /// Opens the SqlConnection and catches all known exceptions with a more usable error message
+        /// </summary>
         public void OpenConnection()
         {
             try
@@ -167,19 +179,19 @@ namespace FilesToDatabaseImporter.ViewModels
             }
             catch (InvalidOperationException)
             {
-                Dispatcher.Invoke(
+                _dispatcher.Invoke(
                     () => _messageBoxHelper.Show("Cannot open a connection without specifying a data source or server."));
             }
             catch (SqlException)
             {
-                Dispatcher.Invoke(
+                _dispatcher.Invoke(
                     () =>
                         _messageBoxHelper.Show(
                             "A connection-level error occurred while opening the connection. If the Number property contains the value 18487 or 18488, this indicates that the specified password has expired or must be reset. See the ChangePassword method for more information."));
             }
             catch (Exception error)
             {
-                Dispatcher.Invoke(
+                _dispatcher.Invoke(
                     () =>
                         _messageBoxHelper.Show(
                         "Unexpected error occurred. " + error));

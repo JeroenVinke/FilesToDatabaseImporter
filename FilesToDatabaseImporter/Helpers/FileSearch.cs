@@ -6,6 +6,9 @@ using File = FilesToDatabaseImporter.Models.File;
 
 namespace FilesToDatabaseImporter.Helpers
 {
+    /// <summary>
+    /// Helper for finding files in a directory (with optionally an extension filter)
+    /// </summary>
     public class FileSearch : IFileSearch
     {
         private readonly List<File> _files;
@@ -22,6 +25,10 @@ namespace FilesToDatabaseImporter.Helpers
             _extensions = new string[] {};
         }
 
+        /// <summary>
+        /// Execute the search
+        /// </summary>
+        /// <returns>Returns list of File</returns>
         public List<File> Search()
         {
             if (string.IsNullOrEmpty(_directory))
@@ -36,6 +43,12 @@ namespace FilesToDatabaseImporter.Helpers
             return _files;
         }
 
+
+        /// <summary>
+        /// Sets the extension array which will be used to filter extensions when searching
+        /// </summary>
+        /// <param name="extensions"></param>
+        /// <returns></returns>
         public IFileSearch SetExtension(string[] extensions)
         {
             _extensions = extensions;
@@ -43,6 +56,12 @@ namespace FilesToDatabaseImporter.Helpers
             return this;
         }
 
+
+        /// <summary>
+        /// Sets the (root) directory which will be used to search files in
+        /// </summary>
+        /// <param name="directory"></param>
+        /// <returns></returns>
         public IFileSearch SetDirectory(string directory)
         {
             _directory = directory;
@@ -50,6 +69,26 @@ namespace FilesToDatabaseImporter.Helpers
             return this;
         }
 
+
+        /// <summary>
+        /// Specifies if a directory will be searched recursively or not
+        /// </summary>
+        /// <param name="recursive"></param>
+        /// <returns></returns>
+        public IFileSearch SetRecursive(bool recursive)
+        {
+            _recursive = recursive;
+
+            return this;
+        }
+
+
+        /// <summary>
+        /// Iterate all files in the directory
+        /// If extension matches filter (or no extension filter is set) add to _files collection
+        /// If recursive is enabled call Iterate for every directory 
+        /// </summary>
+        /// <param name="directory"></param>
         private void Iterate(string directory)
         {
             foreach (var filePath in _directoryHelper.GetFiles(directory))
@@ -81,6 +120,14 @@ namespace FilesToDatabaseImporter.Helpers
             }
         }
 
+
+
+        /// <summary>
+        /// Determine wheter or not the extension of a file is in the extensions filter
+        /// </summary>
+        /// <param name="filePath"></param>
+        /// <param name="extensions">Example: png,jpg</param>
+        /// <returns></returns>
         private bool HasExtension(string filePath, string[] extensions)
         {
             // skip if extension not in extension array
@@ -95,13 +142,6 @@ namespace FilesToDatabaseImporter.Helpers
             if (!extensions.Contains(extension)) return false;
 
             return true;
-        }
-
-        public IFileSearch SetRecursive(bool recursive)
-        {
-            _recursive = recursive;
-
-            return this;
         }
     }
 }

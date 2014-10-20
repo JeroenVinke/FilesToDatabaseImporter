@@ -33,6 +33,33 @@ namespace FilesToDatabaseImporter.ViewModels
             }
         }
 
+        public List<string> ExtensionArray { get; set; }
+
+        private string _extensions;
+        public string Extensions
+        {
+            get { return _extensions; }
+            set
+            {
+                if (value == _extensions) return;
+                _extensions = value;
+
+                ExtensionArray = new List<string>();
+
+                if (!string.IsNullOrEmpty(_extensions))
+                {
+                    var splittedExtensions = _extensions.Split(',');
+
+                    foreach (var extension in splittedExtensions)
+                    {
+                        ExtensionArray.Add(extension);
+                    }
+                }
+
+                OnPropertyChanged();
+            }
+        }
+
         private bool _recursive;
         public bool Recursive
         {
@@ -45,12 +72,12 @@ namespace FilesToDatabaseImporter.ViewModels
             }
         }
 
-
         public DirectorySelectorViewModel()
         {
             Recursive = true;
+            ExtensionArray = new List<string>();
+            Extensions = "html,htm";
         }
-
 
         #region IDataErrorInfo
         private bool _canSave;
@@ -79,10 +106,21 @@ namespace FilesToDatabaseImporter.ViewModels
                     {
                         error = "Directory is mandatory";
                     }
-
-                    if (!System.IO.Directory.Exists(Directory))
+                    else if (!System.IO.Directory.Exists(Directory))
                     {
                         error = string.Format("Directory {0} does not exist", Directory);
+                    }
+                }
+
+
+                if (propertyName == "Extensions")
+                {
+                    if (!string.IsNullOrEmpty(Extensions))
+                    {
+                        if (Extensions.Contains("."))
+                        {
+                            error = "dot not allowed. Usage: html,htm";
+                        }
                     }
                 }
 

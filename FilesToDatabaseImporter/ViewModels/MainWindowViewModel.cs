@@ -56,7 +56,7 @@ namespace FilesToDatabaseImporter.ViewModels
         public MainWindowViewModel(IFileSearch fileSearch = null, IDispatcher dispatcher = null, IDatabaseHelper databaseHelper = null, IMessageBoxHelper messageBoxHelper = null)
         {
             // initialize helpers
-            _dispatcher = dispatcher;
+            _dispatcher = dispatcher ?? new DispatcherWrapper();
             _databaseHelper = databaseHelper ?? new DatabaseHelper();
             _messageBoxHelper = messageBoxHelper ?? new MessageBoxHelper();
             _fileSearch = fileSearch ?? new FileSearch();
@@ -120,7 +120,7 @@ namespace FilesToDatabaseImporter.ViewModels
         {
             var files = _fileSearch
                 .SetDirectory(DirectorySelectorViewModel.Directory)
-                .SetExtension(new[] { "htm", "html" })
+                .SetExtension(DirectorySelectorViewModel.ExtensionArray.ToArray())
                 .SetRecursive(DirectorySelectorViewModel.Recursive)
                 .Search();
 

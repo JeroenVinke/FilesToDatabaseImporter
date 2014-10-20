@@ -17,7 +17,11 @@
             <Button Click="DirectoryBrowseButtonClicked">Browse</Button>
         </StackPanel>
         <StackPanel Orientation="Horizontal" Margin="6 0 0 0">
-            <Label Style="{StaticResource LabelControl}">Recursive</Label>
+            <Label Style="{StaticResource LabelControl}">Extensions:</Label>
+            <TextBox Margin="1,0,0,0" Width="200" Text="{Binding Extensions, UpdateSourceTrigger=PropertyChanged, ValidatesOnDataErrors=True, NotifyOnValidationError=True, ValidatesOnExceptions=True}"></TextBox>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Margin="6 0 0 0">
+            <Label Style="{StaticResource LabelControl}">Recursive:</Label>
             <CheckBox IsChecked="{Binding Recursive, ValidatesOnDataErrors=True, NotifyOnValidationError=True, ValidatesOnExceptions=True}"></CheckBox>
         </StackPanel>
     </StackPanel>
